@@ -5,9 +5,12 @@ export interface SlotsResult {
   slots: SaveSlot[];
   warning: string | null;
 }
-export function readSlots(content: CaseContent): SlotsResult {
+export function readSlots(
+  content: CaseContent,
+  key: string = STORAGE_KEY,
+): SlotsResult {
   try {
-    const text = localStorage.getItem(STORAGE_KEY);
+    const text = localStorage.getItem(key);
     if (!text) return { slots: [], warning: null };
     const raw: unknown = JSON.parse(text);
     if (!Array.isArray(raw)) throw new Error("档案列表损坏");
@@ -37,12 +40,16 @@ export function readSlots(content: CaseContent): SlotsResult {
     };
   }
 }
-function persist(slots: SaveSlot[]): SaveSlot[] {
+function persist(slots: SaveSlot[], key: string): SaveSlot[] {
   const copy = structuredClone(slots);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(copy));
+  localStorage.setItem(key, JSON.stringify(copy));
   return copy;
 }
-export function writeSlot(slots: SaveSlot[], slot: SaveSlot): SaveSlot[] {
+export function writeSlot(
+  slots: SaveSlot[],
+  slot: SaveSlot,
+  key: string = STORAGE_KEY,
+): SaveSlot[] {
   const exists = slots.some((item) => item.id === slot.id);
   if (!exists && slots.length >= MAX_SLOTS)
     throw new Error("最多保存 8 份档案，请先删除一份");
@@ -50,8 +57,16 @@ export function writeSlot(slots: SaveSlot[], slot: SaveSlot): SaveSlot[] {
     exists
       ? slots.map((item) => (item.id === slot.id ? slot : item))
       : [slot, ...slots],
+    key,
   );
 }
-export function deleteSlot(slots: SaveSlot[], id: string): SaveSlot[] {
-  return persist(slots.filter((slot) => slot.id !== id));
+export function deleteSlot(
+  slots: SaveSlot[],
+  id: string,
+  key: string = STORAGE_KEY,
+): SaveSlot[] {
+  return persist(
+    slots.filter((slot) => slot.id !== id),
+    key,
+  );
 }

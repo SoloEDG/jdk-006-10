@@ -13,6 +13,7 @@ export function collectClue(
   cue: Cue,
   heard: HeardHistory,
   bookmark: AudioBookmark,
+  sceneIds?: string[],
 ): EvidenceState | null {
   if (
     !cue.sound ||
@@ -20,7 +21,7 @@ export function collectClue(
     !canCollectSound(heard, episode, cue)
   )
     return null;
-  const next = addNote(state, bookmark, cue.sound.description, "声音线索");
+  const next = addNote(state, bookmark, cue.sound.description, "声音线索", sceneIds);
   return {
     ...next,
     clues: [...state.clues, cue.sound.clueId],

@@ -16,7 +16,7 @@ export function Chapters({
   return (
     <div className="chapters">
       <div className="side-caption">
-        案件章节 <span>CASE 001</span>
+        案件章节 <span>{content.id.toUpperCase()}</span>
       </div>
       {content.scenes.map((s) => (
         <button
@@ -43,7 +43,7 @@ export function Chapters({
         </button>
       ))}
       <div className="chapter-footer">
-        五段录音，一桩尘封的往事。
+        {content.scenes.length} 段录音，一桩尘封的往事。
         <br />
         每一段声音都可能是答案。
       </div>

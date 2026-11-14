@@ -3,10 +3,24 @@ import type {
   Investigation,
   SceneId,
 } from "../../../shared/types";
-export function createInvestigation(): Investigation {
+export function startSceneOf(content: CaseContent): SceneId {
+  return content.start ?? content.scenes[0]?.id ?? "arrival";
+}
+export function endingsOf(content: CaseContent): SceneId[] {
+  if (content.endings?.length) return content.endings;
+  const leaf = content.scenes
+    .filter((scene) => scene.choices.length === 0)
+    .map((scene) => scene.id);
+  const finale = content.scenes.some((scene) => scene.id === "finale")
+    ? ["finale"]
+    : [];
+  return [...new Set([...finale, ...leaf])];
+}
+export function createInvestigation(content?: CaseContent): Investigation {
+  const start = content ? startSceneOf(content) : "arrival";
   return {
-    sceneId: "arrival",
-    visited: ["arrival"],
+    sceneId: start,
+    visited: [start],
     decisions: [],
     ending: null,
   };
@@ -38,9 +52,13 @@ export function applyChoice(
   if (!choice.requires.every((c) => clues.includes(c)))
     throw new Error("声音证据不足，请先补充调查");
   const next = enterScene(content, state, choice.target);
+  const ending = endingsOf(content).includes(choice.target)
+    ? (content.scenes.find((s) => s.id === choice.target)?.title ??
+      choice.target)
+    : state.ending;
   return {
     ...next,
     decisions: [...state.decisions, { sceneId: state.sceneId, choiceId: id }],
-    ending: choice.target === "finale" ? "灯塔的真相" : state.ending,
+    ending,
   };
 }

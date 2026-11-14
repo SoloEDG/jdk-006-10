@@ -1,4 +1,4 @@
-export type SceneId = "arrival" | "harbor" | "interview" | "tower" | "finale";
+export type SceneId = string;
 export interface Cue {
   id: string;
   start: number;
@@ -17,6 +17,7 @@ export interface Episode {
   duration: number;
   cues: Cue[];
   wave: number[];
+  requires?: string[];
 }
 export interface ClueDefinition {
   id: string;
@@ -42,6 +43,10 @@ export interface Scene {
 export interface CaseContent {
   id: string;
   title: string;
+  subtitle?: string;
+  summary?: string;
+  start?: SceneId;
+  endings?: SceneId[];
   scenes: Scene[];
   episodes: Episode[];
   clues: ClueDefinition[];

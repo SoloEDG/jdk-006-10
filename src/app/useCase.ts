@@ -1,17 +1,18 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import type {
   HeardHistory,
   SaveSlot,
   SceneId,
   EvidenceNote,
   Cue,
+  CaseContent,
 } from "../shared/types";
 import {
-  CASE_CONTENT,
   createInvestigation,
   enterScene,
   applyChoice,
   resolveEpisode,
+  startSceneOf,
 } from "../features/story";
 import { useTransport, recordPosition } from "../features/listening";
 import {
@@ -32,18 +33,19 @@ import {
   exportSlot,
   validateSnapshot,
 } from "../features/profiles";
-export function useCase() {
-  const [boot] = useState(() => readSlots(CASE_CONTENT));
-  const [story, setStory] = useState(createInvestigation),
+export function useCase(content: CaseContent, slotsKey?: string) {
+  const [boot] = useState(() => readSlots(content, slotsKey));
+  const [story, setStory] = useState(() => createInvestigation(content)),
     [evidence, setEvidence] = useState(createEvidence),
     [heard, setHeard] = useState<HeardHistory>({}),
     [slots, setSlots] = useState<SaveSlot[]>(boot.slots),
     [activeId, setActiveId] = useState<string | null>(null),
     [notice, setNotice] = useState(
-      boot.warning || "戴上耳机，从第一通来电开始调查。",
+      boot.warning || "戴上耳机，从第一段录音开始调查。",
     ),
     [dirty, setDirty] = useState(false);
-  const episode = resolveEpisode(CASE_CONTENT, story.sceneId, evidence.clues);
+  const sceneIds = content.scenes.map((s) => s.id);
+  const episode = resolveEpisode(content, story.sceneId, evidence.clues);
   const onHeard = useCallback((id: string, position: number) => {
     setHeard((h) => recordPosition(h, id, position));
   }, []);
@@ -62,12 +64,12 @@ export function useCase() {
     } else {
       audio.queueSeek(position);
     }
-    if (id !== story.sceneId) setStory((s) => enterScene(CASE_CONTENT, s, id));
+    if (id !== story.sceneId) setStory((s) => enterScene(content, s, id));
     setDirty(true);
   };
   const choose = (id: string) =>
     run(() => {
-      const next = applyChoice(CASE_CONTENT, story, id, evidence.clues);
+      const next = applyChoice(content, story, id, evidence.clues);
       audio.pause();
       audio.queueSeek(0);
       setStory(next);
@@ -84,7 +86,9 @@ export function useCase() {
       setNotice("请等待录音载入后再标记");
       return;
     }
-    setEvidence((s) => addNote(s, anchor, "在这里写下你的观察…", "声音标记"));
+    setEvidence((s) =>
+      addNote(s, anchor, "在这里写下你的观察…", "声音标记", sceneIds),
+    );
     setDirty(true);
     setNotice("已记录最近五秒，可在笔记中编辑或回听。");
   };
@@ -98,11 +102,18 @@ export function useCase() {
     );
     if (!anchor) return;
     const sound = cue.sound;
-    const result = collectClue(evidence, episode, cue, heard, {
-      ...anchor,
-      start: sound?.start ?? cue.start,
-      end: sound?.end ?? cue.end,
-    });
+    const result = collectClue(
+      evidence,
+      episode,
+      cue,
+      heard,
+      {
+        ...anchor,
+        start: sound?.start ?? cue.start,
+        end: sound?.end ?? cue.end,
+      },
+      sceneIds,
+    );
     if (!result) {
       setNotice("请先听完这段声音，或检查是否已收集。");
       return;
@@ -118,7 +129,7 @@ export function useCase() {
   };
   const save = (name: string) =>
     run(() => {
-      const snapshot = createSnapshot(CASE_CONTENT, story, evidence, heard, {
+      const snapshot = createSnapshot(content, story, evidence, heard, {
         sceneId: story.sceneId,
         position: audio.view.position,
         rate: audio.view.rate,
@@ -128,7 +139,7 @@ export function useCase() {
         old && name === old.name
           ? { ...old, updatedAt: Date.now(), snapshot }
           : createSlot(name, snapshot);
-      const next = writeSlot(slots, slot);
+      const next = writeSlot(slots, slot, slotsKey);
       setSlots(next);
       setActiveId(slot.id);
       setDirty(false);
@@ -138,10 +149,10 @@ export function useCase() {
     run(() => {
       const slot = slots.find((s) => s.id === id);
       if (!slot) throw new Error("存档不存在");
-      const snap = validateSnapshot(slot.snapshot, CASE_CONTENT);
+      const snap = validateSnapshot(slot.snapshot, content);
       audio.pause();
       const nextEpisode = resolveEpisode(
-        CASE_CONTENT,
+        content,
         snap.story.sceneId,
         snap.evidence.clues,
       );
@@ -162,8 +173,8 @@ export function useCase() {
     });
   const importText = (text: string) =>
     run(() => {
-      const slot = parseImported(text, CASE_CONTENT);
-      setSlots(writeSlot(slots, slot));
+      const slot = parseImported(text, content);
+      setSlots(writeSlot(slots, slot, slotsKey));
       setNotice("导入成功，已另存为独立调查进度。");
     });
   const download = (id: string) =>
@@ -174,7 +185,7 @@ export function useCase() {
         url = URL.createObjectURL(blob),
         a = document.createElement("a");
       a.href = url;
-      a.download = `雾港来电-${s.name}.json`;
+      a.download = `${content.title}-${s.name}.json`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     });
@@ -211,18 +222,19 @@ export function useCase() {
     },
     removeSlot: (id: string) =>
       run(() => {
-        setSlots(deleteSlot(slots, id));
+        setSlots(deleteSlot(slots, id, slotsKey));
         if (activeId === id) setActiveId(null);
       }),
     reset: () => {
+      const start = startSceneOf(content);
       audio.pause();
-      if (story.sceneId !== "arrival") audio.queueSeek(0);
-      setStory(createInvestigation());
+      if (story.sceneId !== start) audio.queueSeek(0);
+      setStory(createInvestigation(content));
       setEvidence(createEvidence());
       setHeard({});
       setActiveId(null);
       setDirty(false);
-      if (story.sceneId === "arrival") audio.seek(0);
+      if (story.sceneId === start) audio.seek(0);
       setNotice("已开始一条独立调查路线，已有存档保持不变。");
     },
   };

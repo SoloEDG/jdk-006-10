@@ -448,6 +448,7 @@
     "description": "您说夜里什么也听不见，可求救电话里，明明有三声钟响。",
     "audio": "/audio/interview-aware.wav",
     "duration": 28.661,
+    "requires": ["bell"],
     "cues": [
       {
         "id": "line-1",

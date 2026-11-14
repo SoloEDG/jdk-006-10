@@ -3,6 +3,8 @@ export {
   createInvestigation,
   enterScene,
   applyChoice,
+  startSceneOf,
+  endingsOf,
 } from "./model/investigation";
 export { resolveEpisode, sceneProgress } from "./lib/resolveEpisode";
 export { Chapters } from "./ui/Chapters";

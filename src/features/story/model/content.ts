@@ -3,6 +3,10 @@ import type { CaseContent, Episode } from "../../../shared/types";
 export const CASE_CONTENT: CaseContent = {
   id: "fog-harbor-1998",
   title: "雾港来电",
+  subtitle: "THE CALL FROM FOG HARBOR",
+  summary: "有些真相，只有闭上眼睛才能听见。",
+  start: "arrival",
+  endings: ["finale"],
   episodes: recordings as Episode[],
   clues: [
     {

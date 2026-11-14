@@ -1,11 +1,14 @@
 import type { AudioBookmark, EvidenceState } from "../../../shared/types";
-export function normalizeAnchor(anchor: AudioBookmark): AudioBookmark {
+const BUILTIN_SCENES = ["arrival", "harbor", "interview", "tower", "finale"];
+export function normalizeAnchor(
+  anchor: AudioBookmark,
+  sceneIds?: string[],
+): AudioBookmark {
+  const valid = sceneIds ?? BUILTIN_SCENES;
   if (
     !anchor ||
     typeof anchor.sceneId !== "string" ||
-    !["arrival", "harbor", "interview", "tower", "finale"].includes(
-      anchor.sceneId,
-    ) ||
+    !valid.includes(anchor.sceneId) ||
     !Number.isFinite(anchor.start) ||
     !Number.isFinite(anchor.end) ||
     anchor.start < 0 ||
@@ -22,8 +25,9 @@ export function addNote(
   bookmark: AudioBookmark,
   text: string,
   title = "收听笔记",
+  sceneIds?: string[],
 ): EvidenceState {
-  const anchor = normalizeAnchor(bookmark);
+  const anchor = normalizeAnchor(bookmark, sceneIds);
   const body = text.trim();
   if (!body) throw new Error("请填写笔记内容");
   const note = {

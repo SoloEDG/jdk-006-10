@@ -4,11 +4,12 @@ export function resolveEpisode(
   sceneId: SceneId,
   clues: string[],
 ): Episode {
-  const id =
-    sceneId === "interview" && clues.includes("bell")
-      ? "interview-aware"
-      : `${sceneId}-normal`;
-  const episode = content.episodes.find((e) => e.id === id);
+  const candidates = content.episodes.filter((e) => e.sceneId === sceneId);
+  const unlocked = candidates
+    .filter((e) => (e.requires ?? []).every((id) => clues.includes(id)))
+    .sort((a, b) => (b.requires?.length ?? 0) - (a.requires?.length ?? 0));
+  const episode =
+    unlocked[0] ?? candidates.find((e) => !(e.requires ?? []).length);
   if (!episode) throw new Error("该段录音无法读取");
   return episode;
 }
